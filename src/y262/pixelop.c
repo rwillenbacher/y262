@@ -226,6 +226,8 @@ int32_t y262_satd_16x8( uint8_t *pui8_blk1, int32_t i_stride1, uint8_t *pui8_blk
 	return i_satd;
 }
 
+#ifdef ASSEMBLY_X86
+
 int32_t y262_satd_16x16_sse2( uint8_t *pui8_blk1, int32_t i_stride1, uint8_t *pui8_blk2, int32_t i_stride2 )
 {
 	int32_t i_satd;
@@ -249,6 +251,7 @@ int32_t y262_satd_16x8_sse2( uint8_t *pui8_blk1, int32_t i_stride1, uint8_t *pui
 	return i_satd;
 }
 
+#endif
 
 int32_t y262_ssd_16x16( uint8_t *pui8_blk1, int32_t i_blk1_stride, uint8_t *pui8_blk2, int32_t i_blk2_stride )
 {

@@ -30,6 +30,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "y262.h"
 
+#ifdef ASSEMBLY_X86
+
 void y262_motcomp_16x16_00_put_sse2( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
 void y262_motcomp_16x16_01_put_sse2( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
 void y262_motcomp_16x16_10_put_sse2( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
@@ -79,6 +81,65 @@ void y262_motcomp_8x4_00_avg_mmxext( uint8_t *pui8_src, int32_t i_src_stride, ui
 void y262_motcomp_8x4_01_avg_mmxext( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
 void y262_motcomp_8x4_10_avg_mmxext( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
 void y262_motcomp_8x4_11_avg_mmxext( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+#endif
+
+
+#ifdef ASSEMBLY_ARM64
+
+void y262_motcomp_16x16_00_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_01_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_10_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_11_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_16x8_00_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_01_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_10_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_11_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x16_00_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_01_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_10_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_11_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x8_00_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_01_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_10_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_11_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x4_00_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_01_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_10_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_11_put_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_16x16_00_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_01_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_10_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x16_11_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_16x8_00_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_01_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_10_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_16x8_11_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x16_00_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_01_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_10_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x16_11_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x8_00_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_01_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_10_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x8_11_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+void y262_motcomp_8x4_00_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_01_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_10_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+void y262_motcomp_8x4_11_avg_neon( uint8_t *pui8_src, int32_t i_src_stride, uint8_t *pui8_dst, int32_t i_dst_stride );
+
+#endif
+
+
 
 
 
@@ -322,7 +383,7 @@ void y262_init_motion_compensation( y262_t *ps_y262 )
 	ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_10 ] = y262_motcomp_8x4_10_avg;
 	ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_11 ] = y262_motcomp_8x4_11_avg;
 
-#if 1
+#ifdef ASSEMBLY_X86
 
 	if( 1 )
 	{
@@ -382,6 +443,70 @@ void y262_init_motion_compensation( y262_t *ps_y262 )
 		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_11 ] = y262_motcomp_8x4_11_avg_mmxext;		
 	}
 #endif
+
+#ifdef ASSEMBLY_ARM64
+
+	if( 1 )
+	{
+		/* copy */
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x16 ][ MC_BLOCK_00 ] = y262_motcomp_16x16_00_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x16 ][ MC_BLOCK_01 ] = y262_motcomp_16x16_01_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x16 ][ MC_BLOCK_10 ] = y262_motcomp_16x16_10_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x16 ][ MC_BLOCK_11 ] = y262_motcomp_16x16_11_put_neon;
+
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x8 ][ MC_BLOCK_00 ] = y262_motcomp_16x8_00_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x8 ][ MC_BLOCK_01 ] = y262_motcomp_16x8_01_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x8 ][ MC_BLOCK_10 ] = y262_motcomp_16x8_10_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_16x8 ][ MC_BLOCK_11 ] = y262_motcomp_16x8_11_put_neon;
+		
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x16 ][ MC_BLOCK_00 ] = y262_motcomp_8x16_00_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x16 ][ MC_BLOCK_01 ] = y262_motcomp_8x16_01_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x16 ][ MC_BLOCK_10 ] = y262_motcomp_8x16_10_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x16 ][ MC_BLOCK_11 ] = y262_motcomp_8x16_11_put_neon;
+
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x8 ][ MC_BLOCK_00 ] = y262_motcomp_8x8_00_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x8 ][ MC_BLOCK_01 ] = y262_motcomp_8x8_01_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x8 ][ MC_BLOCK_10 ] = y262_motcomp_8x8_10_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x8 ][ MC_BLOCK_11 ] = y262_motcomp_8x8_11_put_neon;
+
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x4 ][ MC_BLOCK_00 ] = y262_motcomp_8x4_00_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x4 ][ MC_BLOCK_01 ] = y262_motcomp_8x4_01_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x4 ][ MC_BLOCK_10 ] = y262_motcomp_8x4_10_put_neon;
+		ps_y262->s_funcs.rgf_motcomp_copy[ MC_BLOCK_8x4 ][ MC_BLOCK_11 ] = y262_motcomp_8x4_11_put_neon;
+		
+
+
+		/* avg */
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x16 ][ MC_BLOCK_00 ] = y262_motcomp_16x16_00_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x16 ][ MC_BLOCK_01 ] = y262_motcomp_16x16_01_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x16 ][ MC_BLOCK_10 ] = y262_motcomp_16x16_10_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x16 ][ MC_BLOCK_11 ] = y262_motcomp_16x16_11_avg_neon;
+		
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x8 ][ MC_BLOCK_00 ] = y262_motcomp_16x8_00_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x8 ][ MC_BLOCK_01 ] = y262_motcomp_16x8_01_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x8 ][ MC_BLOCK_10 ] = y262_motcomp_16x8_10_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_16x8 ][ MC_BLOCK_11 ] = y262_motcomp_16x8_11_avg_neon;
+		
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x16 ][ MC_BLOCK_00 ] = y262_motcomp_8x16_00_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x16 ][ MC_BLOCK_01 ] = y262_motcomp_8x16_01_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x16 ][ MC_BLOCK_10 ] = y262_motcomp_8x16_10_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x16 ][ MC_BLOCK_11 ] = y262_motcomp_8x16_11_avg_neon;
+
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x8 ][ MC_BLOCK_00 ] = y262_motcomp_8x8_00_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x8 ][ MC_BLOCK_01 ] = y262_motcomp_8x8_01_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x8 ][ MC_BLOCK_10 ] = y262_motcomp_8x8_10_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x8 ][ MC_BLOCK_11 ] = y262_motcomp_8x8_11_avg_neon;
+
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_00 ] = y262_motcomp_8x4_00_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_01 ] = y262_motcomp_8x4_01_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_10 ] = y262_motcomp_8x4_10_avg_neon;
+		ps_y262->s_funcs.rgf_motcomp_avg[ MC_BLOCK_8x4 ][ MC_BLOCK_11 ] = y262_motcomp_8x4_11_avg_neon;		
+
+	}
+#endif
+
+
+
 }
 
 

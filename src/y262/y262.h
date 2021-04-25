@@ -59,10 +59,18 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "transform.h"
 #include "pixelop.h"
 #include "me.h"
-#include "transform_x86.h"
-#include "pixelop_x86.h"
 #include "ratectrl.h"
 #include "threads.h"
+
+#ifdef ASSEMBLY_X86
+#include "transform_x86.h"
+#include "pixelop_x86.h"
+#endif
+
+#ifdef ASSEMBLY_ARM64
+#include "transform_arm64.h"
+#include "pixelop_arm64.h"
+#endif
 
 void y262_init_motion_compensation( y262_t *ps_y262 );
 void y262_error( y262_t *ps_y262, int32_t i_error_code, int8_t* pi8_format, ... );

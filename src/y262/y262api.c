@@ -548,6 +548,7 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 
 	ps_y262->s_funcs.f_fdct_8x8 = y262_fdct_c;
 	ps_y262->s_funcs.f_idct_8x8 = y262_idct_c;
+#ifdef ASSEMBLY_X86
 	if( 1 )
 	{	
 		ps_y262->s_funcs.rgf_sad[ BLOCK_TYPE_16x16 ] = y262_sad_16x16_sse2;
@@ -565,7 +566,29 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 		ps_y262->s_funcs.f_fdct_8x8 = y262_fdct_sse2;
 		ps_y262->s_funcs.f_idct_8x8 = y262_idct_sse2;
 	}
+#endif
 
+#ifdef ASSEMBLY_ARM64
+	if( 1 )
+	{
+		ps_y262->s_funcs.rgf_sad[ BLOCK_TYPE_16x16 ] = y262_sad_16x16_neon;
+		ps_y262->s_funcs.rgf_sad[ BLOCK_TYPE_16x8 ] = y262_sad_16x8_neon;
+		ps_y262->s_funcs.rgf_satd[ BLOCK_TYPE_16x16 ] = y262_satd_16x16_neon;
+		ps_y262->s_funcs.rgf_satd[ BLOCK_TYPE_16x8 ] = y262_satd_16x8_neon;
+
+		ps_y262->s_funcs.f_ssd_16x16 = y262_ssd_16x16_neon;
+		ps_y262->s_funcs.f_ssd_8x8 = y262_ssd_8x8_neon;
+		ps_y262->s_funcs.f_add_8x8 = y262_add_8x8_neon;
+		ps_y262->s_funcs.f_sub_8x8 = y262_sub_8x8_neon;
+		ps_y262->s_funcs.f_quant8x8_intra_fw = y262_quant8x8_intra_fw_mpeg2_neon;
+		ps_y262->s_funcs.f_quant8x8_inter_fw = y262_quant8x8_inter_fw_mpeg2_neon;
+
+		ps_y262->s_funcs.f_fdct_8x8 = y262_fdct_neon;
+		ps_y262->s_funcs.f_idct_8x8 = y262_idct_neon;
+
+
+	}
+#endif
 
 	memset( ps_y262->rgi_y262_motion_bits_x, 0, sizeof( ps_y262->rgi_y262_motion_bits_x ) );
 	memset( ps_y262->rgi_y262_motion_bits_y, 1, sizeof( ps_y262->rgi_y262_motion_bits_y ) );

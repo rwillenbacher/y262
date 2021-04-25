@@ -1,12 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(y262app)
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	set(ARCH "_x64")
-else()
-	set(ARCH "_x86")
-endif()
-
 set( SRC_FILES 
 	${CMAKE_CURRENT_SOURCE_DIR}/main.c
 )
@@ -14,7 +8,7 @@ set( SRC_FILES
 add_executable(y262app ${SRC_FILES})
 target_link_libraries(y262app liby262)
 set_target_properties(y262app PROPERTIES 
-	OUTPUT_NAME "y262$<$<CONFIG:Debug>:d>${ARCH}"
+	OUTPUT_NAME "y262$<$<CONFIG:Debug>:d>"
 	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 	POSITION_INDEPENDENT_CODE ON
 )
