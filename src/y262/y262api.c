@@ -185,29 +185,37 @@ bool_t y262_validate_level( y262_t *ps_y262, int32_t i_level, bool_t b_forderive
 		return FALSE;
 	}
 	i_luma_sample_rate = ( int32_t )( ( ( ( int64_t )( ps_y262->i_sequence_width * ps_y262->i_sequence_height ) ) * ps_y262->i_sequence_derived_timescale ) / ps_y262->i_sequence_derived_picture_duration );
-	if( i_luma_sample_rate > rgi_max_luma_sample_rate[ i_idx ] )
+
+	if( ps_y262->i_sequence_chroma_format == Y262_CHROMA_FORMAT_420 )
 	{
-		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		if( i_luma_sample_rate > rgi_max_luma_sample_rate[ i_idx ] )
 		{
-			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"luma sample rate exceeds level limit" );
+			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+			{
+				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"luma sample rate exceeds level limit" );
+			}
+			return FALSE;
 		}
-		return FALSE;
+		if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
+		{
+			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+			{
+				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"maximum bitrate exceeds level limit" );
+			}
+			return FALSE;
+		}
+		if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
+		{
+			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+			{
+				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"video buffer size exceeds level limit" );
+			}
+			return FALSE;
+		}
 	}
-	if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
+	else
 	{
-		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
-		{
-			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"maximum bitrate exceeds level limit" );
-		}
-		return FALSE;
-	}
-	if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
-	{
-		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
-		{
-			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"video buffer size exceeds level limit" );
-		}
-		return FALSE;
+		/* 422/444 level limits where ? */
 	}
 	return TRUE;
 }
