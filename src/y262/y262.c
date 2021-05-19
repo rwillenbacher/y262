@@ -2142,8 +2142,8 @@ void y262_write_intra_block_mpeg1( y262_t *ps_y262, y262_slice_t *ps_slice, int3
 
 					if( i_level_sign < -127 )
 					{
-						y262_bitstream_write( ps_bitstream, ( -127 & 0xff ), 8 );
-						y262_bitstream_write( ps_bitstream, i_level_sign & 0xff, 8 );
+						y262_bitstream_write( ps_bitstream, 0x80, 8 );
+						y262_bitstream_write( ps_bitstream, ( i_level_sign + 256 ) & 0xff, 8 );
 					}
 					else if( i_level_sign < 128 )
 					{
@@ -2293,8 +2293,8 @@ void y262_write_inter_block_mpeg1( y262_t *ps_y262, y262_slice_t *ps_slice, int3
 
 				if( i_level_sign < -127 )
 				{
-					y262_bitstream_write( ps_bitstream, ( -127 & 0xff ), 8 );
-					y262_bitstream_write( ps_bitstream, i_level_sign & 0xff, 8 );
+					y262_bitstream_write( ps_bitstream, 0x80, 8 );
+					y262_bitstream_write( ps_bitstream, ( i_level_sign + 256 ) & 0xff, 8 );
 				}
 				else if( i_level_sign < 128 )
 				{

@@ -652,7 +652,7 @@ int32_t y262_quant8x8_trellis_fw( y262_t *ps_y262, y262_slice_t *ps_slice, int16
 		i_dc = 0;
 		i_start = 0;
 		pui8_qmat = ps_y262->rgui8_non_intra_quantiser_matrix;
-		y262_quant8x8_inter_fw( ps_y262, rgi16_levels, 8, ps_y262->rgui16_non_intra_quantizer_matrices[ i_quantizer ] );
+		i_nz = y262_quant8x8_inter_fw( ps_y262, rgi16_levels, 8, ps_y262->rgui16_non_intra_quantizer_matrices[ i_quantizer ] );
 	}
 
 	if( i_nz )

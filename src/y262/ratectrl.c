@@ -647,8 +647,9 @@ void y262_ratectrl_start_picture( y262_t *ps_y262, int32_t i_header_bits )
 		else
 		{
 			i64_occupancy_ticks = ( ( ( ( int64_t ) 90000 ) * ( i_occupancy_bits + !!ps_ratectrl->i64_vbv_occupancy_fractional ) ) + ( ps_ratectrl->i_vbvrate - 1 ) ) / ps_ratectrl->i_vbvrate;
+			i_vbv_delay = ( int32_t ) i64_occupancy_ticks;
 		}
-		ps_y262->ps_input_picture->i_vbv_delay = ( int32_t ) i64_occupancy_ticks;
+		ps_y262->ps_input_picture->i_vbv_delay = i_vbv_delay;
 	}
 	else
 	{
@@ -672,9 +673,10 @@ void y262_ratectrl_start_picture( y262_t *ps_y262, int32_t i_header_bits )
 			else
 			{
 				i64_occupancy_ticks = ( ( ( ( int64_t ) 90000 ) * ( i_occupancy_bits + !!ps_ratectrl->i64_vbv_occupancy_fractional ) ) + ( ps_ratectrl->i_vbvrate - 1 ) ) / ps_ratectrl->i_vbvrate;
+				i_vbv_delay = ( int32_t ) i64_occupancy_ticks;
 			}
 		}
-		ps_y262->ps_input_picture->i_vbv_delay = ( int32_t ) i64_occupancy_ticks;
+		ps_y262->ps_input_picture->i_vbv_delay = i_vbv_delay;
 	}
 }
 
