@@ -217,8 +217,8 @@ void usage( )
 	fprintf( stderr, "\ty262app -in <420yuv> -size <width> <height> -out <m2vout>\n\n");
 	fprintf( stderr, "\t-frames <number>    : number of frames to encode, 0 for all\n");
 	fprintf( stderr, "\t-threads <on> <cnt> :  threading enabled and number of concurrent slices\n" );
-	fprintf( stderr, "\t-profile <profile>  :  simple or main profile\n");
-	fprintf( stderr, "\t-level <level>      :  low main high1440 or high level\n");
+	fprintf( stderr, "\t-profile <profile>  :  simple, main, high or 422 profile\n");
+	fprintf( stderr, "\t-level <level>      :  low main high1440 high 422main or 422high level\n");
 	fprintf( stderr, "\t-chromaf            :  chroma format, 420, 422 or 444\n");
 	fprintf( stderr, "\t-rec <reconfile>    :  write reconstructed frames to <reconfile>\n");
 	fprintf( stderr, "\t-rcmode <pass>      :  0 = CQ, 1 = 1st pass, 2 = subsequent pass\n");
