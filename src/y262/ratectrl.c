@@ -30,7 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "y262.h"
 
-
+void y262_ratctrl_init_predictor_2pass( y262_t *ps_y262 );
 
 bool_t y262_ratectrl_init( y262_t *ps_y262 )
 {
@@ -51,15 +51,15 @@ bool_t y262_ratectrl_init( y262_t *ps_y262 )
 	ps_ratectrl->i64_output_frames = 0;
 	ps_ratectrl->i64_output_seconds = 0;
 	ps_ratectrl->d_output_bits = 200.0;
-	ps_ratectrl->d_qb_qplx = 12.0 * 200.0;
+	ps_ratectrl->d_qb_qplx = 10.0 * 200.0;
 	ps_ratectrl->d_target_bits = 200.0;
 	ps_ratectrl->rgd_satd_predictors[ 0 ] = 1.0;
 	ps_ratectrl->rgd_satd_predictors_weight[ 0 ] = 1.0;
-	ps_ratectrl->rgd_satd_predictors[ 1 ] = 1.0;
+	ps_ratectrl->rgd_satd_predictors[ 1 ] = 0.3;
 	ps_ratectrl->rgd_satd_predictors_weight[ 1 ] = 1.0;
-	ps_ratectrl->rgd_satd_predictors[ 2 ] = 1.0;
+	ps_ratectrl->rgd_satd_predictors[ 2 ] = 0.15;
 	ps_ratectrl->rgd_satd_predictors_weight[ 2 ] = 1.0;
-	ps_ratectrl->rgd_satd_predictors[ 3 ] = 1.0;
+	ps_ratectrl->rgd_satd_predictors[ 3 ] = 0.075;
 	ps_ratectrl->rgd_satd_predictors_weight[ 3 ] = 1.0;
 	ps_ratectrl->d_confidence_predict_behind = 1.0;
 	ps_ratectrl->d_confidence_predict_ahead = 1.0;
@@ -156,6 +156,8 @@ bool_t y262_ratectrl_init( y262_t *ps_y262 )
 		ps_ratectrl->d_qb_qplx_2p *= d_adjust;
 		ps_ratectrl->i_current_sample = 0;
 		ps_ratectrl->i_num_samples = i_num_samples;
+
+		y262_ratctrl_init_predictor_2pass( ps_y262 );
 	}
 
 	ps_ratectrl->i_picture_scaled_satd = 0;
@@ -296,6 +298,49 @@ int32_t y262_ratectrl_predict_frame_size_2pass( y262_t *ps_y262, int32_t i_pictu
 
 	return ( int32_t ) d_predicted;
 }
+
+/* to get satd pred started in 2pass */
+void y262_ratctrl_init_predictor_2pass( y262_t *ps_y262 )
+{
+	int32_t i_picture_type, i_idx, i_count, i_baseline;
+	y262_bitrate_control_t *ps_ratectrl;
+	double d_satd_pred, d_satd_pred_weight, d_weight;
+
+	ps_ratectrl = &ps_y262->s_ratectrl;
+
+	for( i_picture_type = 1; i_picture_type <= 3; i_picture_type++ )
+	{
+		i_baseline = y262_ratectrl_predict_frame_size_baseline( ps_y262, i_picture_type );
+
+		ps_ratectrl->rgd_satd_predictors[ i_picture_type ] = 1.0;
+		ps_ratectrl->rgd_satd_predictors_weight[ i_picture_type ] = 1.0;
+
+		d_satd_pred = d_satd_pred_weight = 0.0;
+		d_weight = 1.0;
+		i_count = 0;
+		for( i_idx = 0; i_idx < ps_ratectrl->i_num_samples; i_idx++ )
+		{
+			y262_ratectrl_isample_t *ps_sample = &ps_ratectrl->ps_samples[ i_idx ];
+			if( ps_sample->ui8_frame_type == i_picture_type && ps_sample->i_satd_cost > ps_ratectrl->i_min_satd_for_satd_prediction )
+			{
+				d_satd_pred += ( ( MAX( ps_sample->i_bits - i_baseline, i_baseline * 0.05 ) * ps_sample->d_quantizer ) / ps_sample->i_satd_cost ) * d_weight;
+				d_satd_pred_weight += d_weight;
+				d_weight = d_weight * 0.5;
+				i_count++;
+				if( i_count >= 3 )
+				{
+					break;
+				}
+			}
+		}
+		if( i_count > 0 )
+		{
+			ps_ratectrl->rgd_satd_predictors[ i_picture_type ] = ( d_satd_pred / d_satd_pred_weight ) * 0.5;
+			ps_ratectrl->rgd_satd_predictors_weight[ i_picture_type ] = 0.5;
+		}
+	}
+}
+
 
 
 int32_t y262_ratectrl_predict_first_frame_size( y262_t *ps_y262, int32_t i_picture_type, int32_t i_picture_cost, double d_quantizer, int32_t i_don, int32_t i_which )
@@ -857,22 +902,37 @@ void y262_ratectrl_end_picture( y262_t *ps_y262, int32_t i_bits )
 	/* update confidence */
 	if( ps_ratectrl->i_mode == BITRATE_CONTROL_PASS2 )
 	{
-		double d_delta_behind, d_conf_behind;
-		double d_delta_ahead, d_conf_ahead;
+		double d_conf_behind;
+		double d_conf_ahead;
 
-		d_delta_behind = ps_ratectrl->i_predicted_frame_size_behind - i_bits;
-		d_delta_ahead = ps_ratectrl->i_predicted_frame_size_ahead - i_bits;
+		d_conf_behind = ps_ratectrl->i_predicted_frame_size_behind / ( double ) i_bits;
+		d_conf_ahead = ps_ratectrl->i_predicted_frame_size_ahead / ( double ) i_bits;
 
-		d_delta_behind *= d_delta_behind;
-		d_delta_ahead *= d_delta_ahead;
-
-		d_conf_behind = 1.0 / MAX( d_delta_behind, 1.0 );
-		d_conf_ahead = 1.0 / MAX( d_delta_ahead, 1.0 );
+		if( d_conf_behind > 1.0 )
+		{
+			d_conf_behind = 1.0 / d_conf_behind;
+		}
+		if( d_conf_ahead > 1.0 )
+		{
+			d_conf_ahead = 1.0 / d_conf_ahead;
+		}
 
 		/*fprintf( stderr, "pred actual %d, merge: %d, behind: %d ( %f ), ahead: %d ( %f )\n", i_bits, ps_ratectrl->i_predicted_frame_size, ps_ratectrl->i_predicted_frame_size_behind, d_conf_behind, ps_ratectrl->i_predicted_frame_size_ahead, d_conf_ahead );*/
 
 		ps_ratectrl->d_confidence_predict_behind = ( ps_ratectrl->d_confidence_predict_behind * 0.5 ) + d_conf_behind;
 		ps_ratectrl->d_confidence_predict_ahead = ( ps_ratectrl->d_confidence_predict_ahead * 0.5 ) + d_conf_ahead;
+	}
+	else
+	{
+		/*
+		double d_conf_behind;
+		d_conf_behind = ps_ratectrl->i_predicted_frame_size_behind / ( double ) i_bits;
+		if( d_conf_behind > 1.0 )
+		{
+			d_conf_behind = 1.0 / d_conf_behind;
+		}
+		fprintf( stderr, "pred actual %d, merge: %d, behind: %d ( %f )\n", i_bits, ps_ratectrl->i_predicted_frame_size, ps_ratectrl->i_predicted_frame_size_behind, d_conf_behind );
+		*/
 	}
 
 	if( i_picture_type != PICTURE_CODING_TYPE_B )
