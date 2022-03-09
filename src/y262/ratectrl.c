@@ -1125,7 +1125,7 @@ int32_t y262_ratectrl_get_slice_mb_quantizer( y262_t *ps_y262, y262_slice_encode
 	{
 		i_baseline = ( ps_slice_rc->i_slice_num_accumulated_quantizer * 5 );
 		i_adjusted_slice_coded_size = ps_slice_rc->i_slice_coded_size - i_baseline;
-		i_adjusted_slice_coded_size = MAX( 0, i_adjusted_slice_coded_size );
+		i_adjusted_slice_coded_size = MAX( 100, i_adjusted_slice_coded_size );
 
 		i_extra_bits = ( int32_t )( ( ps_slice_rc->i_slice_bit_budget_extra * 0.8 ) * ( ( ( double )ps_slice_rc->i_slice_coded_scaled_satd ) / ps_slice_rc->i_slice_scaled_satd ) );
 		i_extra_bits += ( int32_t )( ( ps_slice_rc->i_slice_bit_budget_extra * 0.2 ) * MAX( 0.0,
@@ -1155,6 +1155,7 @@ int32_t y262_ratectrl_get_slice_mb_quantizer( y262_t *ps_y262, y262_slice_encode
 			if( ( ps_slice_rc->i_slice_bit_budget + i_extra_bits - i_adjusted_slice_coded_size ) > ( 512 + 9 ) )
 			{
 				double d_scale;
+				d_scale = 1.0;
 				if( i_adjusted_slice_coded_size > 0 && i_adjusted_slice_predicted_size > 0 )
 				{
 					d_scale = i_adjusted_slice_coded_size / ( double ) i_adjusted_slice_predicted_size;

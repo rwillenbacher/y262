@@ -114,14 +114,14 @@ void *y262_create( y262_configuration_t *ps_config )
 }
 
 
-bool_t y262_validate_level( y262_t *ps_y262, int32_t i_level, bool_t b_forderive )
+bool_t y262_validate_level_simple_main_profile( y262_t *ps_y262, int32_t i_level, bool_t b_forderive )
 {
 	int32_t i_idx, i_luma_sample_rate;
 	int32_t rgi_max_hfcode[ 4 ] = { 7, 8, 9, 9 };
 	int32_t rgi_max_vfcode[ 4 ] = { 4, 5, 5, 5 };
 	int32_t rgi_max_frcode[ 4 ] = { 5, 5, 8, 8 };
 	int32_t rgi_max_pic_width[ 4 ] = { 352, 720, 1440, 1920 };
-	int32_t rgi_max_pic_height[ 4 ] = { 288, 576, 1152, 1152 };
+	int32_t rgi_max_pic_height[ 4 ] = { 288, 576, 1088, 1088 };
 	int32_t rgi_fr[ 16 ] = { 100, 24, 24, 25, 30, 30, 50, 60, 60, 100, 100, 100, 100, 100, 100, 100 };
 	int32_t rgi_max_fr[ 4 ] = { 30, 30, 60, 60 };
 	int32_t rgi_max_luma_sample_rate[ 4 ] = { 3041280, 10368000, 47001600, 62668800 };
@@ -186,39 +186,259 @@ bool_t y262_validate_level( y262_t *ps_y262, int32_t i_level, bool_t b_forderive
 	}
 	i_luma_sample_rate = ( int32_t )( ( ( ( int64_t )( ps_y262->i_sequence_width * ps_y262->i_sequence_height ) ) * ps_y262->i_sequence_derived_timescale ) / ps_y262->i_sequence_derived_picture_duration );
 
+	if( i_luma_sample_rate > rgi_max_luma_sample_rate[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"luma sample rate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"maximum bitrate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"video buffer size exceeds level limit" );
+		}
+		return FALSE;
+	}
+	return TRUE;
+}
+
+bool_t y262_validate_level_high_profile( y262_t *ps_y262, int32_t i_level, bool_t b_forderive )
+{
+	int32_t i_idx, i_luma_sample_rate;
+	int32_t rgi_max_hfcode[ 4 ] = { 0, 7, 8, 8 };
+	int32_t rgi_max_vfcode[ 4 ] = { 0, 5, 5, 5 };
+	int32_t rgi_max_frcode[ 4 ] = { 0, 5, 8, 8 };
+	int32_t rgi_max_pic_width[ 4 ] = { 0, 720, 1440, 1920 };
+	int32_t rgi_max_pic_height[ 4 ] = { 0, 576, 1088, 1088 };
+	int32_t rgi_fr[ 16 ] = { 100, 24, 24, 25, 30, 30, 50, 60, 60, 100, 100, 100, 100, 100, 100, 100 };
+	int32_t rgi_max_fr[ 4 ] = { 0, 30, 60, 60 };
+	int32_t rgi_max_luma_sample_rate_420[ 4 ] = { 0, 14745600, 62668800, 83558400 };
+	int32_t rgi_max_luma_sample_rate_422[ 4 ] = { 0, 11059200, 47001600, 62668800 };
+	int32_t rgi_max_bitrate[ 4 ] = { 0, 15000000, 60000000, 80000000 };
+	int32_t rgi_max_buffer_size[ 4 ] = { 0, 2441216, 9781248, 12222464 }; /* enhancement 2 ? */
+
+	i_idx = -1;
+	switch( i_level )
+	{
+		case Y262_LEVEL_MAIN:
+			i_idx = 1;
+			break;
+		case Y262_LEVEL_HIGH1440:
+			i_idx = 2;
+			break;
+		case Y262_LEVEL_HIGH:
+			i_idx = 3;
+			break;
+	}
+
+	if( i_idx == -1 )
+	{
+		return FALSE;
+	}
+	if( ps_y262->rgi_fcode[ 0 ][ 0 ] < 1 || ps_y262->rgi_fcode[ 0 ][ 0 ] > rgi_max_hfcode[ i_idx ] ||
+		ps_y262->rgi_fcode[ 1 ][ 0 ] < 1 || ps_y262->rgi_fcode[ 1 ][ 0 ] > rgi_max_hfcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "horizontal fcode exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->rgi_fcode[ 0 ][ 1 ] < 1 || ps_y262->rgi_fcode[ 0 ][ 1 ] > rgi_max_vfcode[ i_idx ] ||
+		ps_y262->rgi_fcode[ 1 ][ 1 ] < 1 || ps_y262->rgi_fcode[ 1 ][ 1 ] > rgi_max_vfcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "vertical fcode exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->i_sequence_frame_rate_code < 1 || ps_y262->i_sequence_frame_rate_code > rgi_max_frcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "frame rate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->i_sequence_width > rgi_max_pic_width[ i_idx ] ||
+		ps_y262->i_sequence_height > rgi_max_pic_height[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "picture size exceeds level limit" );
+		}
+		return FALSE;
+	}
+	i_luma_sample_rate = ( int32_t ) ( ( ( ( int64_t ) ( ps_y262->i_sequence_width * ps_y262->i_sequence_height ) ) * ps_y262->i_sequence_derived_timescale ) / ps_y262->i_sequence_derived_picture_duration );
+
 	if( ps_y262->i_sequence_chroma_format == Y262_CHROMA_FORMAT_420 )
 	{
-		if( i_luma_sample_rate > rgi_max_luma_sample_rate[ i_idx ] )
+		if( i_luma_sample_rate > rgi_max_luma_sample_rate_420[ i_idx ] )
 		{
 			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
 			{
-				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"luma sample rate exceeds level limit" );
-			}
-			return FALSE;
-		}
-		if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
-		{
-			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
-			{
-				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"maximum bitrate exceeds level limit" );
-			}
-			return FALSE;
-		}
-		if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
-		{
-			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
-			{
-				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t *)"video buffer size exceeds level limit" );
+				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "luma sample rate exceeds level limit" );
 			}
 			return FALSE;
 		}
 	}
 	else
 	{
-		/* 422/444 level limits where ? */
+		if( i_luma_sample_rate > rgi_max_luma_sample_rate_422[ i_idx ] )
+		{
+			if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+			{
+				ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "luma sample rate exceeds level limit" );
+			}
+			return FALSE;
+		}
+	}
+
+	if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "maximum bitrate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "video buffer size exceeds level limit" );
+		}
+		return FALSE;
 	}
 	return TRUE;
 }
+
+
+bool_t y262_validate_level_422_profile( y262_t *ps_y262, int32_t i_level, bool_t b_forderive )
+{
+	int32_t i_idx, i_luma_sample_rate;
+	int32_t rgi_max_hfcode[ 4 ] = { 7, 8 };
+	int32_t rgi_max_vfcode[ 4 ] = { 5, 5 };
+	int32_t rgi_max_frcode[ 4 ] = { 5, 8 };
+	int32_t rgi_max_pic_width[ 4 ] = { 720, 1920 };
+	int32_t rgi_max_pic_height[ 4 ] = { 608, 1088 };
+	int32_t rgi_fr[ 16 ] = { 100, 24, 24, 25, 30, 30, 50, 60, 60, 100, 100, 100, 100, 100, 100, 100 };
+	int32_t rgi_max_fr[ 4 ] = { 30, 60 };
+	int32_t rgi_max_luma_sample_rate[ 4 ] = { 11059200, 62668800 };
+	int32_t rgi_max_bitrate[ 4 ] = { 50000000, 300000000 };
+	int32_t rgi_max_buffer_size[ 4 ] = { 9437184, 47185920 };
+
+	i_idx = -1;
+	switch( i_level )
+	{
+		case Y262_LEVEL_422MAIN:
+			i_idx = 0;
+			break;
+		case Y262_LEVEL_422HIGH:
+			i_idx = 1;
+			break;
+	}
+
+	if( i_idx == -1 )
+	{
+		return FALSE;
+	}
+	if( ps_y262->rgi_fcode[ 0 ][ 0 ] < 1 || ps_y262->rgi_fcode[ 0 ][ 0 ] > rgi_max_hfcode[ i_idx ] ||
+		ps_y262->rgi_fcode[ 1 ][ 0 ] < 1 || ps_y262->rgi_fcode[ 1 ][ 0 ] > rgi_max_hfcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "horizontal fcode exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->rgi_fcode[ 0 ][ 1 ] < 1 || ps_y262->rgi_fcode[ 0 ][ 1 ] > rgi_max_vfcode[ i_idx ] ||
+		ps_y262->rgi_fcode[ 1 ][ 1 ] < 1 || ps_y262->rgi_fcode[ 1 ][ 1 ] > rgi_max_vfcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "vertical fcode exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->i_sequence_frame_rate_code < 1 || ps_y262->i_sequence_frame_rate_code > rgi_max_frcode[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "frame rate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->i_sequence_width > rgi_max_pic_width[ i_idx ] ||
+		ps_y262->i_sequence_height > rgi_max_pic_height[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "picture size exceeds level limit" );
+		}
+		return FALSE;
+	}
+	i_luma_sample_rate = ( int32_t ) ( ( ( ( int64_t ) ( ps_y262->i_sequence_width * ps_y262->i_sequence_height ) ) * ps_y262->i_sequence_derived_timescale ) / ps_y262->i_sequence_derived_picture_duration );
+
+	if( i_luma_sample_rate > rgi_max_luma_sample_rate[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "luma sample rate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->s_ratectrl.i_vbvrate > rgi_max_bitrate[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "maximum bitrate exceeds level limit" );
+		}
+		return FALSE;
+	}
+	if( ps_y262->s_ratectrl.i_vbv_size > rgi_max_buffer_size[ i_idx ] )
+	{
+		if( !b_forderive && ps_y262->s_funcs.pf_error_callback )
+		{
+			ps_y262->s_funcs.pf_error_callback( ps_y262->p_cb_handle, Y262_ERROR_PROFILELEVEL, ( int8_t * ) "video buffer size exceeds level limit" );
+		}
+		return FALSE;
+	}
+	return TRUE;
+}
+
+
+bool_t y262_validate_level( y262_t *ps_y262, int32_t i_profile, int32_t i_level, bool_t b_forderive )
+{
+	if( i_profile == Y262_PROFILE_SIMPLE ||
+		i_profile == Y262_PROFILE_MAIN )
+	{
+		return y262_validate_level_simple_main_profile( ps_y262, i_level, b_forderive );
+	}
+	else if( i_profile == Y262_PROFILE_HIGH )
+	{
+		return y262_validate_level_high_profile( ps_y262, i_level, b_forderive );
+	}
+	else if( i_profile == Y262_PROFILE_422 )
+	{
+		return y262_validate_level_422_profile( ps_y262, i_level, b_forderive );
+	}
+	return FALSE;
+}
+
+
 
 int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 {
@@ -293,19 +513,33 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 	}
 	if( ps_config->i_profile != Y262_PROFILE_DERIVE &&
 		ps_config->i_profile != Y262_PROFILE_SIMPLE && 
-		ps_config->i_profile != Y262_PROFILE_MAIN )
+		ps_config->i_profile != Y262_PROFILE_MAIN &&
+		ps_config->i_profile != Y262_PROFILE_HIGH &&
+		ps_config->i_profile != Y262_PROFILE_422 )
 	{
 		return Y262_INIT_ERROR_PROFILE;
 	}
-	if( ps_config->i_level != Y262_LEVEL_DERIVE &&
-		ps_config->i_level != Y262_LEVEL_LOW &&
-		ps_config->i_level != Y262_LEVEL_MAIN &&
-		ps_config->i_level != Y262_LEVEL_HIGH1440 &&
-		ps_config->i_level != Y262_LEVEL_HIGH )
+	if( ps_config->i_level != Y262_LEVEL_DERIVE )
 	{
-		return Y262_INIT_ERROR_LEVEL;
+		if( ps_config->i_profile != Y262_PROFILE_422 )
+		{
+			if( ps_config->i_level != Y262_LEVEL_LOW &&
+				ps_config->i_level != Y262_LEVEL_MAIN &&
+				ps_config->i_level != Y262_LEVEL_HIGH1440 &&
+				ps_config->i_level != Y262_LEVEL_HIGH )
+			{
+				return Y262_INIT_ERROR_LEVEL;
+			}
+		}
+		else
+		{
+			if( ps_config->i_level != Y262_LEVEL_422MAIN &&
+				ps_config->i_level != Y262_LEVEL_422HIGH )
+			{
+				return Y262_INIT_ERROR_LEVEL;
+			}
+		}
 	}
-
 	if( ps_config->i_lookahead_pictures < 10 || ps_config->i_lookahead_pictures > 50 )
 	{
 		return Y262_INIT_ERROR_LOOKAHEADPICS;
@@ -672,7 +906,14 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 
 	if( ps_config->i_profile == Y262_PROFILE_DERIVE )
 	{
-		ps_y262->i_derived_profile = ps_y262->i_sequence_num_bframes > 0 ? Y262_PROFILE_MAIN : Y262_PROFILE_SIMPLE;
+		if( ps_y262->i_sequence_chroma_format != Y262_CHROMA_FORMAT_420 )
+		{
+			ps_y262->i_derived_profile = Y262_PROFILE_422;
+		}
+		else
+		{
+			ps_y262->i_derived_profile = ps_y262->i_sequence_num_bframes > 0 ? Y262_PROFILE_MAIN : Y262_PROFILE_SIMPLE;
+		}
 	}
 	else
 	{
@@ -685,6 +926,14 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 		}
 		else if( ps_config->i_profile == Y262_PROFILE_MAIN )
 		{
+			if( ps_y262->i_sequence_chroma_format != Y262_CHROMA_FORMAT_420 )
+			{
+				return Y262_INIT_ERROR_PROFILE_CHROMA_FORMAT;
+			}
+		}
+		else if( ps_config->i_profile == Y262_PROFILE_HIGH ||
+			ps_config->i_profile == Y262_PROFILE_422 )
+		{
 		}
 		else
 		{
@@ -695,24 +944,42 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 	if( ps_config->i_level == Y262_LEVEL_DERIVE )
 	{
 		int32_t i_check;
-		int32_t rgi_levels[ 4 ] = { Y262_LEVEL_LOW, Y262_LEVEL_MAIN, Y262_LEVEL_HIGH1440, Y262_LEVEL_HIGH };
-
-		for( i_check = 0; i_check < 4; i_check++ )
+		if( ps_y262->i_derived_profile != Y262_PROFILE_422 )
 		{
-			if( y262_validate_level( ps_y262, rgi_levels[ i_check ], i_check < 3 ? TRUE : FALSE ) )
+			int32_t rgi_levels[ 4 ] = { Y262_LEVEL_LOW, Y262_LEVEL_MAIN, Y262_LEVEL_HIGH1440, Y262_LEVEL_HIGH };
+			for( i_check = 0; i_check < 4; i_check++ )
 			{
-				ps_y262->i_derived_level = rgi_levels[ i_check ];
-				break;
+				if( y262_validate_level( ps_y262, ps_y262->i_derived_profile, rgi_levels[ i_check ], i_check < 3 ? TRUE : FALSE ) )
+				{
+					ps_y262->i_derived_level = rgi_levels[ i_check ];
+					break;
+				}
+			}
+			if( i_check == 4 )
+			{
+				return Y262_INIT_ERROR_LEVEL_LIMITS;
 			}
 		}
-		if( i_check == 4 )
+		else /* i_derived_profile == Y262_PROFILE_422 */
 		{
-			return Y262_INIT_ERROR_LEVEL_LIMITS;
+			int32_t rgi_levels[ 4 ] = { Y262_LEVEL_422MAIN, Y262_LEVEL_422HIGH };
+			for( i_check = 0; i_check < 2; i_check++ )
+			{
+				if( y262_validate_level( ps_y262, ps_y262->i_derived_profile, rgi_levels[ i_check ], i_check < 1 ? TRUE : FALSE ) )
+				{
+					ps_y262->i_derived_level = rgi_levels[ i_check ];
+					break;
+				}
+			}
+			if( i_check == 2 )
+			{
+				return Y262_INIT_ERROR_LEVEL_LIMITS;
+			}
 		}
 	}
 	else
 	{
-		if( !y262_validate_level( ps_y262, ps_config->i_level, FALSE ) )
+		if( !y262_validate_level( ps_y262, ps_y262->i_derived_profile, ps_config->i_level, FALSE ) )
 		{
 			return Y262_INIT_ERROR_LEVEL_LIMITS;
 		}

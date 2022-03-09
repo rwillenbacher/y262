@@ -374,6 +374,14 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 			{
 				s_config.i_profile = Y262_PROFILE_MAIN;
 			}
+			else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "high" ) == 0 )
+			{
+				s_config.i_profile = Y262_PROFILE_HIGH;
+			}
+			else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "422" ) == 0 )
+			{
+				s_config.i_profile = Y262_PROFILE_422;
+			}
 			else
 			{
 				fprintf( stderr, "unknown profile specified on commandline\n");
@@ -394,9 +402,17 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 			{
 				s_config.i_level = Y262_LEVEL_HIGH1440;
 			}
-			else if( strcmp( ( char *)rgpi8_argv[ i_idx ], "high" ) == 0 )
+			else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "high" ) == 0 )
 			{
 				s_config.i_level = Y262_LEVEL_HIGH;
+			}
+			else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "422main" ) == 0 )
+			{
+				s_config.i_level = Y262_LEVEL_422MAIN;
+			}
+			else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "422high" ) == 0 )
+			{
+				s_config.i_level = Y262_LEVEL_422HIGH;
 			}
 			else
 			{
@@ -915,6 +931,14 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 	if( strcmp( ( char * ) pi8_infile, "-" ) != 0 )
 	{
 		fclose( f_in );
+	}
+	if( f_mpass_in )
+	{
+		fclose( f_mpass_in );
+	}
+	if( f_mpass_out )
+	{
+		fclose( f_mpass_out );
 	}
 
 	return 0;

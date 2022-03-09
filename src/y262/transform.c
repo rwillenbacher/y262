@@ -612,19 +612,155 @@ void y262_quant8x8_trellis_copy_int16( int16_t *pi16_dst, const int16_t *pi16_sr
 }
 
 
+
+typedef struct y262_trellis_node_s
+{
+	struct y262_trellis_node_s *ps_next;
+	int32_t i_cost;
+	int16_t i16_num_level;
+	int16_t i16_last_scan_idx;
+
+	int16_t rgi16_idx[ 8 * 8 ];
+	int16_t rgi16_level[ 8 * 8 ];
+} y262_trellis_node_t;
+
+typedef struct
+{
+	int32_t i_lambda;
+#define Y262_TRELLIS_MAX_ACTIVE_NODES 3
+#define Y262_RDOQ_NUM_NODES ( Y262_TRELLIS_MAX_ACTIVE_NODES * 3 )
+	y262_trellis_node_t rgs_nodes[ Y262_RDOQ_NUM_NODES ];
+	y262_trellis_node_t *ps_active_nodes;
+	y262_trellis_node_t *ps_next_nodes;
+	y262_trellis_node_t *ps_free_nodes;
+} y262_trellis_t;
+
+
+void y262_quant8x8_trellis_init( y262_t *ps_y262, y262_trellis_t *ps_trellis, int32_t i_lambda )
+{
+	int32_t i_idx;
+
+	ps_trellis->i_lambda = i_lambda;
+	ps_trellis->ps_free_nodes = NULL;
+	for( i_idx = 0; i_idx < Y262_RDOQ_NUM_NODES - 1; i_idx++ )
+	{
+		ps_trellis->rgs_nodes[ i_idx ].ps_next = ps_trellis->ps_free_nodes;
+		ps_trellis->ps_free_nodes = &ps_trellis->rgs_nodes[ i_idx ];
+	}
+	ps_trellis->rgs_nodes[ i_idx ].ps_next = NULL;
+	ps_trellis->rgs_nodes[ i_idx ].i_cost = 0;
+	ps_trellis->rgs_nodes[ i_idx ].i16_num_level = 0;
+	ps_trellis->rgs_nodes[ i_idx ].i16_last_scan_idx = -1;
+	ps_trellis->ps_active_nodes = &ps_trellis->rgs_nodes[ i_idx ];
+
+}
+
+void y262_trellis_spawn_trellis( y262_trellis_t *ps_trellis, y262_trellis_node_t *ps_from, int32_t i_ssd, int32_t i_co_idx, int32_t i_scan_idx, int32_t i_level )
+{
+	y262_trellis_node_t *ps_to;
+	int32_t i_new_cost;
+
+	ps_to = ps_trellis->ps_free_nodes;
+	ps_trellis->ps_free_nodes = ps_to->ps_next;
+
+	ps_to->i16_num_level = ps_from->i16_num_level;
+	ps_to->i16_last_scan_idx = ps_from->i16_last_scan_idx;
+	ps_to->i_cost = ps_from->i_cost;
+	memcpy( ps_to->rgi16_idx, ps_from->rgi16_idx, ps_from->i16_num_level * sizeof( int16_t ) );
+	memcpy( ps_to->rgi16_level, ps_from->rgi16_level, ps_from->i16_num_level * sizeof( int16_t ) );
+
+	i_new_cost = ps_from->i_cost;
+	if( i_level )
+	{
+		int32_t i_bits, i_bit_cost, i_run;
+
+		i_run = i_scan_idx - ps_from->i16_last_scan_idx - 1;
+		i_bits = y262_size_run_level( i_run, i_level );
+		i_bit_cost = ( ( i_bits * ps_trellis->i_lambda ) >> ( Y262_LAMBDA_BITS ) );
+		i_new_cost += i_bit_cost;
+
+		ps_to->i16_last_scan_idx = i_scan_idx;
+		ps_to->rgi16_idx[ ps_to->i16_num_level ] = i_co_idx;
+		ps_to->rgi16_level[ ps_to->i16_num_level ] = i_level;
+		ps_to->i16_num_level++;
+	}
+	i_new_cost += i_ssd;
+	ps_to->i_cost = i_new_cost;
+	ps_to->ps_next = ps_trellis->ps_next_nodes;
+	ps_trellis->ps_next_nodes = ps_to;
+}
+
+
+void y262_trellis_shrink_trellis( y262_trellis_t *ps_trellis )
+{
+	int32_t i_num_nodes;
+	y262_trellis_node_t *ps_node, *ps_new_list, **pps_new_list, *ps_list;
+
+	ps_list = ps_trellis->ps_active_nodes;
+
+	ps_new_list = NULL;
+	while( ps_list )
+	{
+		ps_node = ps_list;
+		ps_list = ps_list->ps_next;
+
+		pps_new_list = &ps_new_list;
+		while( *pps_new_list && ( *pps_new_list )->i_cost < ps_node->i_cost )
+		{
+			pps_new_list = &( *pps_new_list )->ps_next;
+		}
+
+		if( *pps_new_list )
+		{
+			ps_node->ps_next = ( *pps_new_list );
+		}
+		else
+		{
+			ps_node->ps_next = NULL;
+		}
+
+		*pps_new_list = ps_node;
+	}
+	ps_list = ps_new_list;
+	i_num_nodes = 0;
+	ps_trellis->ps_active_nodes = NULL;
+	while( ps_list && i_num_nodes < Y262_TRELLIS_MAX_ACTIVE_NODES )
+	{
+		ps_node = ps_list;
+		ps_list = ps_list->ps_next;
+
+		ps_node->ps_next = ps_trellis->ps_active_nodes;
+		ps_trellis->ps_active_nodes = ps_node;
+		i_num_nodes++;
+	}
+	while( ps_list )
+	{
+		ps_node = ps_list;
+		ps_list = ps_list->ps_next;
+
+		ps_node->ps_next = ps_trellis->ps_free_nodes;
+		ps_trellis->ps_free_nodes = ps_node;
+	}
+}
+
+
+
 int32_t y262_quant8x8_trellis_fw( y262_t *ps_y262, y262_slice_t *ps_slice, int16_t *pi_coeffs, int32_t i_stride, int32_t i_quantizer, bool_t b_intra )
 {
-	int32_t i_dc, i_nz;
-	int32_t i_coeff, i_start, i_num_coeff, i_last_coeff, i_idx, i_idx2, i_run, i_level;
+	int32_t i_dc, i_nz, i_num_active_nodes;
+	int32_t i_coeff, i_start, i_num_coeff, i_last_coeff, i_idx, i_run, i_level;
 	int16_t rgi16_levels[ 64 ];
 	int16_t rgi16_coeffs[ 64 ];
 	int8_t rgi8_idx[ 64 ];
 	int16_t rgi16_level[ 64 ];
 	uint8_t *pui8_qmat;
 	y262_macroblock_t *ps_mb;
+	y262_trellis_t s_trellis;
+	y262_trellis_node_t *ps_node, *ps_next, *ps_best;
 
-	int32_t i_active_toggle;
-	int32_t i_candidate_level, i_dir, i_end, i_ssd, i_bits, i_cost, i_lambda;
+	int32_t i_cost, i_lambda, i_ssd, i_candidate_level, i_dir, i_end;
+
+	assert( i_stride == 8 );
 
 	ps_mb = &ps_slice->s_macroblock;
 
@@ -687,11 +823,7 @@ int32_t y262_quant8x8_trellis_fw( y262_t *ps_y262, y262_slice_t *ps_slice, int16
 		return i_dc;
 	}
 	
-	memset( &ps_y262->trellis.rgi8_path_active, 0, sizeof( ps_y262->trellis.rgi8_path_active ) );
-	memset( &ps_y262->trellis.rgi_path_cost, 0, sizeof( ps_y262->trellis.rgi_path_cost ) );
-
-	i_active_toggle = 0;
-	ps_y262->trellis.rgi8_path_active[ i_active_toggle ][ 0 ] = 1;
+	y262_quant8x8_trellis_init( ps_y262, &s_trellis, i_lambda );
 
 	for( i_idx = 0; i_idx < i_num_coeff; i_idx++ )
 	{
@@ -706,6 +838,9 @@ int32_t y262_quant8x8_trellis_fw( y262_t *ps_y262, y262_slice_t *ps_slice, int16
 			i_dir = 1;
 		}
 		i_end = i_level + i_dir * 2;
+		i_num_active_nodes = 0;
+		s_trellis.ps_next_nodes = NULL;
+
 		for( i_candidate_level = i_level; i_candidate_level != i_end; i_candidate_level += i_dir )
 		{
 			int32_t i_qm, i_qt, i_x, i_y;
@@ -741,72 +876,41 @@ int32_t y262_quant8x8_trellis_fw( y262_t *ps_y262, y262_slice_t *ps_slice, int16
 
 			i_ssd = ( i_coeff - rgi16_coeffs[ i_idx ] ) * ( i_coeff - rgi16_coeffs[ i_idx ] );
 
-			for( i_idx2 = i_idx; i_idx2 >= 0; i_idx2-- )
+			for( ps_node = s_trellis.ps_active_nodes; ps_node; ps_node = ps_node->ps_next )
 			{
-				if( ps_y262->trellis.rgi8_path_active[ i_active_toggle ][ i_idx2 ] )
-				{
-					if( i_candidate_level != 0 )
-					{
-						int32_t i_run;
-						if( i_idx2 > 0 )
-						{
-							i_run = rgi8_idx[ i_idx ] - ps_y262->trellis.rgi8_path_idx[ i_idx2 ][ i_idx2 ] - 1;
-						}
-						else
-						{
-							i_run = rgi8_idx[ i_idx ];
-						}
-						i_bits = y262_size_run_level( i_run, i_candidate_level );
-						i_cost = ps_y262->trellis.rgi_path_cost[ i_idx2 ] + ( ( i_bits * i_lambda ) >> Y262_LAMBDA_BITS ) + i_ssd;
-
-						if( !ps_y262->trellis.rgi8_path_active[ !i_active_toggle ][ i_idx2 + 1 ] || i_cost < ps_y262->trellis.rgi_path_cost[ i_idx2 + 1 ] )
-						{
-							y262_quant8x8_trellis_copy_int8( &ps_y262->trellis.rgi8_path_idx[ i_idx2 + 1 ][ 0 ], &ps_y262->trellis.rgi8_path_idx[ i_idx2 ][ 0 ], ( i_idx2 + 1 ) );
-							y262_quant8x8_trellis_copy_int16( &ps_y262->trellis.rgi16_path_level[ i_idx2 + 1 ][ 0 ], &ps_y262->trellis.rgi16_path_level[ i_idx2 ][ 0 ], ( i_idx2 + 1 ) );
-							ps_y262->trellis.rgi8_path_idx[ i_idx2 + 1 ][ i_idx2 + 1 ] = rgi8_idx[ i_idx ];
-							ps_y262->trellis.rgi16_path_level[ i_idx2 + 1 ][ i_idx2 + 1 ] = i_candidate_level;
-							ps_y262->trellis.rgi8_path_active[ !i_active_toggle ][ i_idx2 + 1 ] = 1;
-							ps_y262->trellis.rgi_path_cost[ i_idx2 + 1 ] = i_cost;
-						}
-					}
-					else
-					{
-						/* last coeff candidate iter, we can overwrite/activate current path */
-						i_cost = ps_y262->trellis.rgi_path_cost[ i_idx2 ] + i_ssd;
-						if( !ps_y262->trellis.rgi8_path_active[ !i_active_toggle ][ i_idx2 ] || i_cost < ps_y262->trellis.rgi_path_cost[ i_idx2 ] )
-						{
-							ps_y262->trellis.rgi8_path_active[ !i_active_toggle ][ i_idx2 ] = 1;
-							ps_y262->trellis.rgi_path_cost[ i_idx2 ] = i_cost;
-						}
-					}
-				}
+				y262_trellis_spawn_trellis( &s_trellis, ps_node, i_ssd, rgui8_y262_scan_0_table[ rgi8_idx[ i_idx ] ], rgi8_idx[ i_idx ], i_candidate_level );
+				i_num_active_nodes++;
 			}
 		}
-		memset( &ps_y262->trellis.rgi8_path_active[ i_active_toggle ][ 0 ], 0, sizeof( int8_t ) * 65 );
-		i_active_toggle = i_active_toggle^1;
+		for( ps_node = s_trellis.ps_active_nodes; ps_node; ps_node = ps_next )
+		{
+			ps_next = ps_node->ps_next;
+			ps_node->ps_next = s_trellis.ps_free_nodes;
+			s_trellis.ps_free_nodes = ps_node;
+		}
+		s_trellis.ps_active_nodes = s_trellis.ps_next_nodes;
+
+
+		if( i_num_active_nodes > Y262_TRELLIS_MAX_ACTIVE_NODES )
+		{
+			y262_trellis_shrink_trellis( &s_trellis );
+		}
 	}
 
 	i_cost = MAX_COST;
-	i_idx2 = 0;
-	for( i_idx = 0; i_idx <= i_num_coeff; i_idx++ )
+	for( ps_node = s_trellis.ps_active_nodes; ps_node; ps_node = ps_node->ps_next )
 	{
-		if( ps_y262->trellis.rgi8_path_active[ i_active_toggle ][ i_idx ] && ps_y262->trellis.rgi_path_cost[ i_idx ] < i_cost )
+		if( ps_node->i_cost < i_cost )
 		{
-			i_idx2 = i_idx;
-			i_cost = ps_y262->trellis.rgi_path_cost[ i_idx ];
+			i_cost = ps_node->i_cost;
+			ps_best = ps_node;
 		}
 	}
-	for( i_idx = 1; i_idx <= i_idx2; i_idx++ )
+	for( i_idx = 0; i_idx < ps_best->i16_num_level; i_idx++ )
 	{
-		int32_t i_x, i_y;
-		if( ps_y262->trellis.rgi16_path_level[ i_idx2 ][ i_idx ] != rgi16_level[ i_idx - 1 ] )
-		{
-			i_idx = i_idx;
-		}
-		i_x = rgui8_y262_scan_0_table[ ps_y262->trellis.rgi8_path_idx[ i_idx2 ][ i_idx ] ] % 8;
-		i_y = rgui8_y262_scan_0_table[ ps_y262->trellis.rgi8_path_idx[ i_idx2 ][ i_idx ] ] / 8;
-		pi_coeffs[ i_x + i_y * i_stride ] = ps_y262->trellis.rgi16_path_level[ i_idx2 ][ i_idx ];
+		pi_coeffs[ ps_best->rgi16_idx[ i_idx ] ] = ps_best->rgi16_level[ i_idx ];
 	}
-	return i_idx2 != 0;
+	return ( ps_best->i16_num_level > 0 );
+
 }
 

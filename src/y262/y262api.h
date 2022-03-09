@@ -113,6 +113,8 @@ typedef struct {
 #define Y262_PROFILE_DERIVE 256
 #define Y262_PROFILE_SIMPLE 5
 #define Y262_PROFILE_MAIN   4
+#define Y262_PROFILE_HIGH   1
+#define Y262_PROFILE_422    8
 	int32_t i_profile;	/* profile, one of the profile defines  */
 
 #define Y262_LEVEL_DERIVE   256
@@ -120,6 +122,8 @@ typedef struct {
 #define Y262_LEVEL_MAIN     8
 #define Y262_LEVEL_HIGH1440 6
 #define Y262_LEVEL_HIGH     4
+#define Y262_LEVEL_422MAIN  5
+#define Y262_LEVEL_422HIGH  2
 	int32_t i_level;  /* level, one of the level defines */
 
 #define Y262_VIDEOFORMAT_PAL     0
@@ -270,6 +274,8 @@ void *y262_create( y262_configuration_t *ps_config );
 #define Y262_INIT_ERROR_RESOURCE_INTERNAL -28
 /* invalid y262 context */
 #define Y262_INIT_ERROR_CONTEXT -29
+/* invalid chroma format for profile */
+#define Y262_INIT_ERROR_PROFILE_CHROMA_FORMAT -30
 
 /*
 initializes the encoder context p_y262 with the encoding configuration ps_config.

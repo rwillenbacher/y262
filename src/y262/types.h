@@ -768,11 +768,4 @@ typedef struct y262_s {
 	int32_t i_psyrd_strength;
 	int32_t i_quality_for_speed;
 
-	struct {
-		int8_t rgi8_path_active[ 2 ][ 65 ];
-		int8_t rgi8_path_idx[ 65 ][ 65 ];
-		int16_t rgi16_path_level[ 65 ][ 65 ];
-		int32_t rgi_path_cost[ 65 ];
-	} trellis;
-
 } y262_t;
