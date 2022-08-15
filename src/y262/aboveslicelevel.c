@@ -47,13 +47,27 @@ void y262_write_sequence_header( y262_t *ps_context )
 	{
 		s_sequence_header.i_horizontal_size = ps_context->i_sequence_width;
 	}
-	if( ( ps_context->i_sequence_height >> 4 ) == ( ( ps_context->i_sequence_display_height + 15 ) >> 4 ) )
+	if( ps_context->b_progressive_sequence )
 	{
-		s_sequence_header.i_vertical_size = ps_context->i_sequence_display_height;
+		if( ( ps_context->i_sequence_height >> 4 ) == ( ( ps_context->i_sequence_display_height + 15 ) >> 4 ) )
+		{
+			s_sequence_header.i_vertical_size = ps_context->i_sequence_display_height;
+		}
+		else
+		{
+			s_sequence_header.i_vertical_size = ps_context->i_sequence_height;
+		}
 	}
 	else
 	{
-		s_sequence_header.i_vertical_size = ps_context->i_sequence_height;
+		if( ( ps_context->i_sequence_height >> 5 ) == ( ( ps_context->i_sequence_display_height + 31 ) >> 5 ) )
+		{
+			s_sequence_header.i_vertical_size = ps_context->i_sequence_display_height;
+		}
+		else
+		{
+			s_sequence_header.i_vertical_size = ps_context->i_sequence_height;
+		}
 	}
 	s_sequence_header.i_aspect_ratio_information = ps_context->i_sequence_aspect_ratio_information;
 	s_sequence_header.i_frame_rate_code = ps_context->i_sequence_pulldown_frame_rate_code;

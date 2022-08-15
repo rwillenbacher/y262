@@ -719,7 +719,14 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 	s_config.i_display_width = i_width;
 	s_config.i_display_height = i_height;
 	i_pad_x = ( ( ( i_width + 15 ) / 16 ) * 16 ) - i_width;
-	i_pad_y = ( ( ( i_height + 15 ) / 16 ) * 16 ) - i_height;
+	if( !s_config.b_interlaced )
+	{
+		i_pad_y = ( ( ( i_height + 15 ) / 16 ) * 16 ) - i_height;
+	}
+	else
+	{
+		i_pad_y = ( ( ( i_height + 31 ) / 32 ) * 32 ) - i_height;
+	}
 
 	s_config.i_coded_width = i_width + i_pad_x;
 	s_config.i_coded_height = i_height + i_pad_y;

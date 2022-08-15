@@ -104,7 +104,7 @@ typedef struct {
 	int32_t i_display_width; /* display width, for example 1920 */
 	int32_t i_display_height; /* display height, for example 1080 */
 	int32_t i_coded_width;   /* coded width, has to be multiple of 16, for example 1920 */
-	int32_t i_coded_height; /* coded height, has to be multiple of 16, for example 1088 */
+	int32_t i_coded_height; /* coded height, has to be multiple of 16, for example 1088, or multiple of 32 if b_interlaced is set */
 #define Y262_CHROMA_FORMAT_420  1
 #define Y262_CHROMA_FORMAT_422  2
 #define Y262_CHROMA_FORMAT_444  3

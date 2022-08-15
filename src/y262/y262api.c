@@ -471,7 +471,7 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 	{
 		return Y262_INIT_ERROR_CODED_SIZE;
 	}
-	if( ( ps_config->i_coded_height & 0xf ) != 0 )
+	if( ( ( ps_config->i_coded_height & 0xf ) != 0 ) || ( ps_config->b_interlaced && ( ps_config->i_coded_height & 0x1f ) != 0 ) )
 	{
 		return Y262_INIT_ERROR_CODED_SIZE;
 	}
@@ -601,7 +601,7 @@ int32_t y262_initialize( void *p_y262, y262_configuration_t *ps_config )
 	}
 	else
 	{
-		ps_y262->b_progressive_sequence = FALSE;
+		ps_y262->b_progressive_sequence = !ps_config->b_interlaced;
 		ps_y262->i_intra_dc_precision = 1;
 	}
 	ps_y262->b_frame_pred_frame_dct = !ps_config->b_interlaced; /* interlaced */
