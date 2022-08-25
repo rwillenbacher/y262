@@ -38,12 +38,12 @@ Once you have your executable you can run the encoder without arguments to get a
 
 Sample output:
 ```
-        y262app -in <420yuv> -size <width> <height> -out <m2vout>
+        y262app -in <yuv> -size <width> <height> -out <m2vout>
 
         -frames <number>    : number of frames to encode, 0 for all
         -threads <on> <cnt> :  threading enabled and number of concurrent slices
-        -profile <profile>  :  simple or main profile
-        -level <level>      :  low main high1440 or high level
+        -profile <profile>  :  simple, main, high or 422 profile
+        -level <level>      :  low main high1440 high 422main or 422high level
         -chromaf            :  chroma format, 420, 422 or 444
         -rec <reconfile>    :  write reconstructed frames to <reconfile>
         -rcmode <pass>      :  0 = CQ, 1 = 1st pass, 2 = subsequent pass
@@ -73,7 +73,9 @@ Sample output:
         -mpeg1              :  output mpeg1 instead mpeg2, constraints apply
 ```
 
-Notes about -in, you can specify "-" if you want to pipe the yuv into the application. The yuv format of the input should match -chromaf
+Notes about -in, you can specify "-" if you want to pipe the yuv into the application. The yuv format of the input should match -chromaf.
+It can also be in .y4m format. Settings detected in a .y4m can be overridden by giving the specific option after -in.
+So for example "-in foreman_cif.yuv -frcode 1" will override the 25Hz from the foreman_cif.y4m with 23.976024Hz. Mpeg2 limitations apply.
 
 
 Example: So to encode something you call it like so:

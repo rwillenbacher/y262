@@ -34,6 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #ifndef TRUE
 #define TRUE 1
@@ -52,6 +53,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include "y262api.h"
+
+int32_t b_pipe_input;
+int32_t i_y4m_input = 0;
+uint8_t rgui8_y4m_input_buffer[ 128 ];
 
 
 FILE *f_rec, *f_out, *f_mpass_out = NULL, *f_mpass_in = NULL;
@@ -85,6 +90,7 @@ double d_picture_duration, d_timescale;
 y262_input_picture_t s_buffered_output_picture;
 
 y262_configuration_t s_config;
+
 
 void y262app_error_cb( void *p_handle, int32_t i_code, int8_t *pi8_msg )
 {
@@ -165,7 +171,7 @@ int32_t y262app_rcsample_cb( void *p_handle, int32_t i_don, uint8_t *pui8_data, 
 
 		while( 1 )
 		{
-			i_ret = fread( &s_sample, sizeof( s_sample ), 1, f_mpass_in );
+			i_ret = ( int32_t )fread( &s_sample, sizeof( s_sample ), 1, f_mpass_in );
 			if( i_ret == 1 )
 			{
 				if( i_data_length == s_sample.i_len )
@@ -209,6 +215,317 @@ int32_t y262app_rcsample_cb( void *p_handle, int32_t i_don, uint8_t *pui8_data, 
 	}
 	return 0;
 }
+
+
+int32_t y262app_probe_for_y4m( FILE *f_in )
+{
+	uint8_t *pui8_str, *pui8_next;
+	int32_t i_idx;
+	int32_t i_y4m_width = -1, i_y4m_height = -1;
+	int32_t i_y4m_fps_num = -1, i_y4m_fps_denom = -1;
+	int32_t i_y4m_chroma_format = -1;
+	int32_t i_y4m_ar_num = -1, i_y4m_ar_denom = -1;
+	int32_t i_y4m_interlaced;
+
+	for( i_idx = 0; i_idx < 127; i_idx++ )
+	{
+		fread( &rgui8_y4m_input_buffer[ i_idx ], sizeof( uint8_t ), 1, f_in );
+		if( rgui8_y4m_input_buffer[ i_idx ] == '\n' )
+		{
+			break;
+		}
+	}
+	i_y4m_input = -i_idx; /* set to negative number of bytes read */
+
+	if( i_idx == 127 )
+	{
+		return 0;
+	}
+
+	rgui8_y4m_input_buffer[ i_idx ] = 0;
+	pui8_str = &rgui8_y4m_input_buffer[ 0 ];
+
+	if( memcmp( pui8_str, "YUV4MPEG", 8 ) )
+	{
+		return 0;
+	}
+	if( pui8_str[ 8 ] != '2' )
+	{
+		fprintf( stderr, "wrong YUV4MPEG version '%c', need '2'\n", pui8_str[ 8 ] );
+		return -1;
+	}
+	pui8_str += 9;
+
+	while( *pui8_str != 0 )
+	{
+		while( *pui8_str == ' ' )
+		{
+			pui8_str++;
+		}
+		if( *pui8_str == 0 ) /* end of header */
+		{
+			break;
+		}
+
+		pui8_next = pui8_str;
+		while( *pui8_next != ' ' && *pui8_next != 0 )
+		{
+			pui8_next++;
+		}
+
+		if( pui8_str[ 0 ] == 'W' )
+		{
+			if( sscanf( &pui8_str[ 1 ], "%d", &i_y4m_width ) != 1 )
+			{
+				goto y262app_y4m_error_parsing_header_tag;
+			}
+		}
+		else if( pui8_str[ 0 ] == 'H' )
+		{
+			if( sscanf( &pui8_str[ 1 ], "%d", &i_y4m_height ) != 1 )
+			{
+				goto y262app_y4m_error_parsing_header_tag;
+			}
+		}
+		else if( pui8_str[ 0 ] == 'C' )
+		{
+			uint8_t rgui8_chroma_format[ 128 ];
+			i_idx = 0;
+			while( ( ++pui8_str ) != pui8_next )
+			{
+				rgui8_chroma_format[ i_idx++ ] = *pui8_str;
+			}
+			rgui8_chroma_format[ i_idx ] = 0;
+
+			if( strcmp( &rgui8_chroma_format[ 0 ], "420jpeg" ) == 0 || strcmp( &rgui8_chroma_format[ 0 ], "420" ) == 0 ||
+				strcmp( &rgui8_chroma_format[ 0 ], "420mpeg2" ) == 0 || strcmp( &rgui8_chroma_format[ 0 ], "420paidv" ) == 0 )
+			{
+				i_y4m_chroma_format = Y262_CHROMA_FORMAT_420;
+			}
+			else if( strcmp( &rgui8_chroma_format[ 0 ], "422" ) == 0 )
+			{
+				i_y4m_chroma_format = Y262_CHROMA_FORMAT_422;
+			}
+			else if( strcmp( &rgui8_chroma_format[ 0 ], "444" ) == 0 )
+			{
+				i_y4m_chroma_format = Y262_CHROMA_FORMAT_444;
+			}
+			else
+			{
+				fprintf( stderr, "unsupported y4m chroma format '%s'\n", &rgui8_chroma_format[ 0 ] );
+				return -1;
+			}
+		}
+		else if( pui8_str[ 0 ] == 'F' )
+		{
+			if( sscanf( &pui8_str[ 1 ], "%d:%d", &i_y4m_fps_num, &i_y4m_fps_denom ) != 2 )
+			{
+				goto y262app_y4m_error_parsing_header_tag;
+			}
+		}
+		else if( pui8_str[ 0 ] == 'A' )
+		{
+			if( sscanf( &pui8_str[ 1 ], "%d:%d", &i_y4m_ar_num, &i_y4m_ar_denom ) != 2 )
+			{
+				goto y262app_y4m_error_parsing_header_tag;
+			}
+		}
+		else if( pui8_str[ 0 ] == 'I' )
+		{
+			i_y4m_interlaced = pui8_str[ 1 ];
+		}
+		else
+		{
+			/* ignore */
+		}
+		pui8_str = pui8_next;
+	}
+
+	if( i_y4m_width < 0 || i_y4m_height < 0 )
+	{
+		fprintf( stderr, "malformed y4m header. required fields missing. abort." );
+		return -1;
+	}
+	else
+	{
+		i_width = i_y4m_width;
+		i_height = i_y4m_height;
+		fprintf( stderr, "info: y4m width %d, height %d.\n", i_width, i_height );
+	}
+
+
+	if( i_y4m_fps_num > 0 && i_y4m_fps_denom > 0 )
+	{
+		float f32_best_mpeg_fps, f32_mpeg_fps, f32_y4m_fps;
+		int32_t i_best;
+
+		f32_y4m_fps = ( ( float ) i_y4m_fps_num ) / i_y4m_fps_denom;
+
+		i_best = -1;
+		for( i_idx = 1; i_idx <= 8; i_idx++ )
+		{
+			f32_mpeg_fps = ( ( float ) rgi_framerate_code_timescale[ i_idx ] ) / rgi_framerate_code_duration[ i_idx ];
+			if( i_best < 0 || ( fabs( f32_best_mpeg_fps - f32_y4m_fps ) > fabs( f32_mpeg_fps - f32_y4m_fps ) ) )
+			{
+				i_best = i_idx;
+				f32_best_mpeg_fps = f32_mpeg_fps;
+			}
+		}
+		fprintf( stderr, "info: y4m derived mpeg fps %.5f.\n", f32_best_mpeg_fps );
+		s_config.i_frame_rate_code = i_best;
+	}
+
+	if( i_y4m_chroma_format >= 0 )
+	{
+		char *rgpc_chroma_formats[ 4 ] = {
+			"unknown",
+			"420",
+			"422",
+			"444"
+		};
+
+		s_config.i_coded_chroma_format = i_y4m_chroma_format;
+
+		fprintf( stderr, "info: y4m chroma format: '%s'.\n", rgpc_chroma_formats[ s_config.i_coded_chroma_format ] );
+	}
+
+	if( i_y4m_ar_num > 0 && i_y4m_ar_denom > 0 )
+	{
+		float rgf_mpeg2_ratios[ 5 ] = { 0.0f, 1.0f, 4.0f / 3.0f, 16.0f / 9.0f, 2.21f / 1.0f };
+		float f32_y4m_ar;
+		int32_t i_best;
+
+		f32_y4m_ar = ( ( float ) i_y4m_ar_num ) / i_y4m_ar_denom;
+
+		i_best = -1;
+		for( i_idx = 1; i_idx <= 4; i_idx++ )
+		{
+			if( i_best < 0 || ( fabs( rgf_mpeg2_ratios[ i_best ] - f32_y4m_ar ) > fabs( rgf_mpeg2_ratios[ i_idx ] - f32_y4m_ar ) ) )
+			{
+				i_best = i_idx;
+			}
+		}
+		fprintf( stderr, "info: y4m derived mpeg2 AR %.5f. ( please override for mpeg1! )\n", rgf_mpeg2_ratios[ i_best ] );
+		s_config.i_aspect_ratio_information = i_best;
+	}
+
+	i_y4m_input = 1;
+
+	return 0;
+
+y262app_y4m_error_parsing_header_tag:;
+	fprintf( stderr, "error parsing y4m header tag '%c'\n", pui8_str[ 0 ] );
+	return -1;
+}
+
+
+int32_t y262app_fread_unpeek( void *p_buffer, size_t ui_size, FILE *f_in )
+{
+	uint8_t *pui8_buffer = ( uint8_t * ) p_buffer;
+	int32_t i_size = ( int32_t ) ui_size;
+	size_t i_ret = 1;
+
+	if( i_y4m_input < 0 )
+	{
+		int32_t i_copy = -i_y4m_input;
+		if( i_copy > i_size )
+		{
+			i_copy = i_size;
+		}
+		memcpy( pui8_buffer, &rgui8_y4m_input_buffer[ 0 ], i_copy * sizeof( uint8_t ) );
+		i_y4m_input = 0; /* dont fragment, dont bother */
+		i_size -= i_copy;
+		pui8_buffer += i_copy;
+	}
+
+	if( i_size > 0 )
+	{
+		i_ret = fread( pui8_buffer, i_size, 1, f_in );
+	}
+	return ( int32_t ) i_ret;
+}
+
+int32_t y262app_read_yuv_frame( FILE *f_in, y262_input_picture_t *ps_picture )
+{
+	int32_t i_ret;
+
+	if( i_y4m_input > 0 )
+	{
+		int32_t i_idx;
+		uint8_t rgui8_y4m_frame_header[ 128 ];
+
+		for( i_idx = 0; i_idx < 127; i_idx++ )
+		{
+			i_ret = y262app_fread_unpeek( &rgui8_y4m_frame_header[ i_idx ], sizeof( uint8_t ), f_in );
+			if( i_ret == 0 || rgui8_y4m_frame_header[ i_idx ] == '\n' )
+			{
+				break;
+			}
+		}
+		rgui8_y4m_frame_header[ i_idx ] = 0;
+
+		if( i_idx == 0 )
+		{
+			return 0; /* eof ? */
+		}
+
+		if( i_idx == 127 )
+		{
+			fprintf( stderr, "error: y4m frame header too large or lost frame sync\n" );
+			return 0;
+		}
+		if( memcmp( &rgui8_y4m_frame_header[ 0 ], "FRAME", 5 ) )
+		{
+			fprintf( stderr, "error: y4m lost frame sync\n" );
+			return 0;
+		}
+	}
+
+	/* read raw yuv, maybe prepend peek */
+	if( i_pad_x != 0 )
+	{
+		int32_t i_y;
+
+		for( i_y = 0; i_y < i_height; i_y++ )
+		{
+			i_ret = y262app_fread_unpeek( ps_picture->pui8_luma + i_y * s_config.i_coded_width, sizeof( uint8_t ) * i_width, f_in );
+		}
+		for( i_y = 0; i_y < i_chroma_height; i_y++ )
+		{
+			i_ret = y262app_fread_unpeek( ps_picture->pui8_cb + i_y * i_coded_chroma_width, sizeof( uint8_t ) * i_chroma_width, f_in );
+		}
+		for( i_y = 0; i_y < i_chroma_height; i_y++ )
+		{
+			i_ret = y262app_fread_unpeek( ps_picture->pui8_cr + i_y * i_coded_chroma_width, sizeof( uint8_t ) * i_chroma_width, f_in );
+		}
+	}
+	else
+	{
+		i_ret = y262app_fread_unpeek( ps_picture->pui8_luma, sizeof( uint8_t ) * s_config.i_coded_width * i_height, f_in );
+		i_ret = y262app_fread_unpeek( ps_picture->pui8_cb, sizeof( uint8_t ) * i_coded_chroma_width * i_chroma_height, f_in );
+		i_ret = y262app_fread_unpeek( ps_picture->pui8_cr, sizeof( uint8_t ) * i_coded_chroma_width * i_chroma_height, f_in );
+	}
+	if( i_pad_y != 0 )
+	{
+		int32_t i_y;
+		for( i_y = i_height; i_y < s_config.i_coded_height; i_y++ )
+		{
+			memset( ps_picture->pui8_luma + i_y * s_config.i_coded_width, 0, sizeof( uint8_t ) * s_config.i_coded_width );
+		}
+		for( i_y = i_chroma_height; i_y < i_coded_chroma_height; i_y++ )
+		{
+			memset( ps_picture->pui8_cb + i_y * i_coded_chroma_width, 128, sizeof( uint8_t ) * i_coded_chroma_width );
+			memset( ps_picture->pui8_cr + i_y * i_coded_chroma_width, 128, sizeof( uint8_t ) * i_coded_chroma_width );
+		}
+	}
+	if( i_ret <= 0 )
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
 
 
 void usage( )
@@ -348,6 +665,33 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 		if( strcmp( ( char *)rgpi8_argv[ i_idx ], "-in" ) == 0 )
 		{
 			pi8_infile = rgpi8_argv[ ++i_idx ];
+			if( pi8_infile )
+			{
+				if( strcmp( ( char * ) pi8_infile, "-" ) == 0 )
+				{
+#ifdef WIN32
+					_setmode( _fileno( stdin ), _O_BINARY );
+#else
+					stdin = freopen( NULL, "rb", stdin );
+#endif
+					f_in = stdin;
+					b_pipe_input = 1;
+				}
+				else
+				{
+					f_in = fopen( ( char * ) pi8_infile, "rb" );
+					b_pipe_input = 0;
+				}
+				if( !f_in )
+				{
+					fprintf( stderr, "could not open input file '%s'\n", pi8_infile );
+					return -1;
+				}
+				else
+				{
+					y262app_probe_for_y4m( f_in );
+				}
+			}
 		}
 		else if( strcmp( ( char * ) rgpi8_argv[ i_idx ], "-frames" ) == 0 )
 		{
@@ -599,8 +943,12 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 		}
 	}
 
-	if( i_argc < 2 || !pi8_infile )
+	if( i_argc < 2 || f_in == NULL )
 	{
+		if( f_in == NULL )
+		{
+			fprintf( stderr, "no -in <infile> given on commandline.\n" );
+		}
 		usage();
 		return -1;
 	}
@@ -609,32 +957,6 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 	s_config.pf_error_callback = y262app_error_cb;
 	s_config.pf_result_callback = y262app_result_cb;
 	s_config.pf_rcsample_callback = y262app_rcsample_cb;
-
-	if( pi8_infile )
-	{
-		if( strcmp( ( char * ) pi8_infile, "-" ) == 0 )
-		{
-#ifdef WIN32
-			_setmode( _fileno( stdin ), _O_BINARY );
-#else
-			stdin = freopen( NULL, "rb", stdin );
-#endif
-			f_in = stdin;
-		}
-		else
-		{
-			f_in = fopen( ( char *)pi8_infile, "rb" );
-		}
-		if( !f_in )
-		{
-			fprintf( stderr, "could not open input file\n");
-			return -1;
-		}
-	}
-	else
-	{
-		fprintf( stderr, "need -in <ifile> commandline argument\n");
-	}
 
 	if( pi8_outfile )
 	{
@@ -787,43 +1109,7 @@ int32_t main( int32_t i_argc, char *rgpi8_argv[] )
 	{
 		uint8_t rgui8_user_data[ 100 ];
 
-		if( i_pad_x != 0 )
-		{
-			int32_t i_y;
-
-			for( i_y = 0; i_y < i_height; i_y++ )
-			{
-				i_ret = fread( s_picture.pui8_luma + i_y * s_config.i_coded_width, sizeof( uint8_t ) * i_width, 1, f_in );
-			}
-			for( i_y = 0; i_y < i_chroma_height; i_y++ )
-			{
-				i_ret = fread( s_picture.pui8_cb + i_y * i_coded_chroma_width, sizeof( uint8_t ) * i_chroma_width, 1, f_in );
-			}
-			for( i_y = 0; i_y < i_chroma_height; i_y++ )
-			{
-				i_ret = fread( s_picture.pui8_cr + i_y * i_coded_chroma_width, sizeof( uint8_t ) * i_chroma_width, 1, f_in );
-			}
-		}
-		else
-		{
-			i_ret = fread( s_picture.pui8_luma, sizeof( uint8_t ) * s_config.i_coded_width * i_height, 1, f_in );
-			i_ret = fread( s_picture.pui8_cb, sizeof( uint8_t ) * i_coded_chroma_width * i_chroma_height, 1, f_in );
-			i_ret = fread( s_picture.pui8_cr, sizeof( uint8_t ) * i_coded_chroma_width * i_chroma_height, 1, f_in );
-		}
-		if( i_pad_y != 0 )
-		{
-			int32_t i_y;
-			for( i_y = i_height; i_y < s_config.i_coded_height; i_y++ )
-			{
-				memset( s_picture.pui8_luma + i_y * s_config.i_coded_width, 0, sizeof( uint8_t ) * s_config.i_coded_width );
-			}
-			for( i_y = i_chroma_height; i_y < i_coded_chroma_height; i_y++ )
-			{
-				memset( s_picture.pui8_cb + i_y * i_coded_chroma_width, 128, sizeof( uint8_t ) * i_coded_chroma_width );
-				memset( s_picture.pui8_cr + i_y * i_coded_chroma_width, 128, sizeof( uint8_t ) * i_coded_chroma_width );
-			}
-		}
-		if( i_ret <= 0 )
+		if( y262app_read_yuv_frame( f_in, &s_picture ) == 0 )
 		{
 			break;
 		}
